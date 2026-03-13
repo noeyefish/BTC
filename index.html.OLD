@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מחיר BTC בלייב</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #121212;
+            color: #ffffff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            text-align: center;
+            overflow: hidden;
+            /* למנוע גלילה מיותרת */
+        }
+
+        h1 {
+            font-size: clamp(2rem, 5vw, 4rem);
+            color: #aaa;
+            margin-bottom: 2vh;
+        }
+
+        #price {
+            font-size: clamp(4rem, 15vw, 20rem);
+            font-weight: bold;
+            color: #f7931a;
+            /* Bitcoin Orange Default */
+            text-shadow: 0 0 30px rgba(247, 147, 26, 0.4);
+            transition: color 0.2s ease, text-shadow 0.2s ease;
+            white-space: nowrap;
+            /* למנוע שבירת שורה במסכים צרים */
+        }
+
+        .up {
+            color: #00ff88 !important;
+            text-shadow: 0 0 30px rgba(0, 255, 136, 0.4) !important;
+        }
+
+        .down {
+            color: #ff4757 !important;
+            text-shadow: 0 0 30px rgba(255, 71, 87, 0.4) !important;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>מחיר Bitcoin (BTC)</h1>
+    <div id="price">...טוען</div>
+
+    <script>
+        const priceElement = document.getElementById('price');
+        let lastPrice = 0;
+
+        // התחברות ל-WebSocket של Binance לקבלת מחיר הביטקוין בלייב
+        const ws = new WebSocket('wss://stream.binance.com:9443/ws/btcusdt@trade');
+
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            const currentPrice = parseFloat(data.p);
+
+            // עיצוב המספר עם פסיקים ושתי ספרות עשרוניות
+            priceElement.innerText = '$' + currentPrice.toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+
+            // שינוי צבע - ירוק לעלייה, אדום לירידה
+            if (currentPrice > lastPrice && lastPrice !== 0) {
+                priceElement.className = 'up';
+            } else if (currentPrice < lastPrice && lastPrice !== 0) {
+                priceElement.className = 'down';
+            }
+
+            lastPrice = currentPrice;
+        };
+
+        ws.onerror = (error) => {
+            console.error('WebSocket Error:', error);
+            priceElement.innerText = 'שגיאה בחיבור';
+            priceElement.style.color = '#ff4757';
+        };
+    </script>
+</body>
+
+</html>
