@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מחירי קריפטו בלייב</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #0a0a0a;
+            color: #ffffff;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            text-align: center;
+            overflow-x: hidden;
+            padding-top: 60px;
+        }
+        
+        /* Settings Button */
+        #settingsBtn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #aaa;
+            font-size: 1.5rem;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 100;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(10px);
+        }
+        #settingsBtn:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.1);
+            transform: rotate(90deg);
+        }
+
+        /* Settings Modal */
+        #settingsModal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.85);
+            z-index: 200;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(8px);
+        }
+        .modal-content {
+            background-color: #161616;
+            padding: 30px;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+            border: 1px solid #333;
+            text-align: right;
+        }
+        .modal-content h2 {
+            margin-top: 0;
+            color: #f7931a;
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+        }
+        .symbol-input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        input[type="text"] {
+            flex-grow: 1;
+            padding: 12px;
+            border-radius: 10px;
+            border: 1px solid #333;
+            background-color: #222;
+            color: white;
+            font-size: 1rem;
+            text-transform: uppercase;
+        }
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #f7931a;
+        }
+        button.add-btn {
+            background-color: #f7931a;
+            color: #000;
+            border: none;
+            padding: 0 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: transform 0.2s;
+        }
+        button.add-btn:active { transform: scale(0.95); }
+
+        .active-coins-list {
+            list-style: none;
+            padding: 0;
+            margin-bottom: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .active-coins-list li {
+            background: #222;
+            margin-bottom: 10px;
+            padding: 12px 15px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid #333;
+        }
+        .remove-coin {
+            color: #ff4757;
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-size: 1.1rem;
+            padding: 5px;
+        }
+
+        .close-modal {
+            background: #333;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            width: 100%;
+            font-weight: bold;
+        }
+
+        /* Coins Display Area */
+        #coinsContainer {
+            display: flex;
+            flex-direction: column;
+            gap: 8vh;
+            width: 100%;
+            align-items: center;
+            padding-bottom: 100px;
+        }
+        
+        .coin-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            padding: 20px;
+        }
+
+        .coin-title {
+            font-size: clamp(1.2rem, 3vw, 2.5rem);
+            color: #888;
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .price-display {
+            font-size: clamp(3.5rem, 15vw, 18rem);
+            font-weight: 800;
+            margin: -10px 0;
+            color: #fff;
+            transition: color 0.3s ease; /* Removed global shadow transition */
+            font-variant-numeric: tabular-nums;
+        }
+        
+        /* 24h Stats row */
+        .stats-row {
+            display: flex;
+            gap: 40px;
+            margin-top: 10px;
+        }
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .stat-label {
+            font-size: clamp(0.8rem, 2vw, 1.2rem);
+            color: #555;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+        .stat-value {
+            font-size: clamp(1rem, 3vw, 2rem);
+            color: #eee;
+            font-weight: 600;
+        }
+
+        /* Status Colors - GLOW BASE */
+        .up { color: #00ff88 !important; }
+        .down { color: #ff4757 !important; }
+        
+        .glow-active.up { text-shadow: 0 0 40px rgba(0, 255, 136, 0.4); }
+        .glow-active.down { text-shadow: 0 0 40px rgba(255, 71, 87, 0.4); }
+        
+        /* Special styles */
+        .btc-price { color: #f7931a; }
+        .eth-price { color: #627eea; }
+        
+        .glow-active.btc-price { text-shadow: 0 0 40px rgba(247, 147, 26, 0.4); }
+        .glow-active.eth-price { text-shadow: 0 0 40px rgba(98, 126, 234, 0.4); }
+
+        /* Toggle Switch UI */
+        .setting-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 10px 0;
+            border-bottom: 1px solid #333;
+        }
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 26px;
+        }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #333;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px; width: 18px;
+            left: 4px; bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider { background-color: #f7931a; }
+        input:checked + .slider:before { transform: translateX(24px); }
+
+        .error-msg {
+            color: #ff4757;
+            font-size: 0.85rem;
+            margin-bottom: 15px;
+            display: none;
+        }
+
+        /* Anim for updates */
+        @keyframes flash {
+            0% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        .flashing { animation: flash 0.1s ease-out; }
+    </style>
+</head>
+<body>
+    <button id="settingsBtn" title="הגדרות">⚙️</button>
+
+    <div id="settingsModal">
+        <div class="modal-content">
+            <h2>הגדרות תצוגה</h2>
+            
+            <div class="setting-item">
+                <span>אפקט Glow (תאורה)</span>
+                <label class="switch">
+                    <input type="checkbox" id="glowToggle">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <h2>ניהול מטבעות</h2>
+            <ul id="activeCoinsList" class="active-coins-list"></ul>
+            
+            <div class="symbol-input-group">
+                <input type="text" id="newCoinInput" placeholder="לדוגמה: SOL, XRP, ADA" maxlength="10">
+                <button id="addCoinBtn" class="add-btn">הוסף</button>
+            </div>
+            <div id="errorMsg" class="error-msg"></div>
+            
+            <button id="closeModalBtn" class="close-modal">סגור</button>
+        </div>
+    </div>
+
+    <div id="coinsContainer"></div>
+
+    <script>
+        let symbols = ['BTC'];
+        let glowEnabled = localStorage.getItem('glowEnabled') === 'true';
+        const websockets = {};
+        const lastPrices = {};
+
+        const glowToggle = document.getElementById('glowToggle');
+        glowToggle.checked = glowEnabled;
+
+        glowToggle.onchange = (e) => {
+            glowEnabled = e.target.checked;
+            localStorage.setItem('glowEnabled', glowEnabled);
+            updateGlowClasses();
+        };
+
+        function updateGlowClasses() {
+            const displays = document.querySelectorAll('.price-display');
+            displays.forEach(el => {
+                if (glowEnabled) el.classList.add('glow-active');
+                else el.classList.remove('glow-active');
+            });
+        }
+
+        const settingsBtn = document.getElementById('settingsBtn');
+        const settingsModal = document.getElementById('settingsModal');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const addCoinBtn = document.getElementById('addCoinBtn');
+        const newCoinInput = document.getElementById('newCoinInput');
+        const activeCoinsList = document.getElementById('activeCoinsList');
+        const coinsContainer = document.getElementById('coinsContainer');
+        const errorMsg = document.getElementById('errorMsg');
+
+        // Modal Logic
+        settingsBtn.onclick = () => { renderActiveCoinsList(); settingsModal.style.display = 'flex'; };
+        closeModalBtn.onclick = () => settingsModal.style.display = 'none';
+        window.onclick = (e) => { if (e.target === settingsModal) settingsModal.style.display = 'none'; };
+
+        addCoinBtn.onclick = addNewCoin;
+        newCoinInput.onkeypress = (e) => { if (e.key === 'Enter') addNewCoin(); };
+
+        function addNewCoin() {
+            let symbol = newCoinInput.value.trim().toUpperCase();
+            if (!symbol) return;
+            errorMsg.style.display = 'none';
+            if (symbols.includes(symbol)) { showError("כבר קיים."); return; }
+            
+            symbols.push(symbol);
+            newCoinInput.value = '';
+            createCoinElement(symbol);
+            connectWebSocket(symbol);
+            renderActiveCoinsList();
+        }
+
+        function createCoinElement(symbol) {
+            const card = document.createElement('div');
+            card.className = 'coin-card';
+            card.id = `card-${symbol}`;
+
+            let colorClass = '';
+            if(symbol === 'BTC') colorClass = 'btc-price';
+            if(symbol === 'ETH') colorClass = 'eth-price';
+
+            card.innerHTML = `
+                <h2 class="coin-title">${symbol} / USDT</h2>
+                <div id="price-${symbol}" class="price-display ${colorClass} ${glowEnabled ? 'glow-active' : ''}">...</div>
+                <div class="stats-row">
+                    <div class="stat-item">
+                        <span class="stat-label">24H High</span>
+                        <span id="high-${symbol}" class="stat-value">-</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">24H Low</span>
+                        <span id="low-${symbol}" class="stat-value">-</span>
+                    </div>
+                </div>
+            `;
+            coinsContainer.appendChild(card);
+            lastPrices[symbol] = 0;
+        }
+
+        function connectWebSocket(symbol) {
+            const ws = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}usdt@ticker`);
+            websockets[symbol] = ws;
+
+            ws.onmessage = (event) => {
+                const d = JSON.parse(event.data);
+                const price = parseFloat(d.c);
+                const high = parseFloat(d.h);
+                const low = parseFloat(d.l);
+                
+                const el = document.getElementById(`price-${symbol}`);
+                const highEl = document.getElementById(`high-${symbol}`);
+                const lowEl = document.getElementById(`low-${symbol}`);
+                if(!el) return;
+
+                let prec = price < 1 ? 4 : 2;
+                const fmt = (num) => '$' + num.toLocaleString('en-US', { minimumFractionDigits: prec, maximumFractionDigits: prec });
+
+                el.innerText = fmt(price);
+                highEl.innerText = fmt(high);
+                lowEl.innerText = fmt(low);
+
+                if (price > lastPrices[symbol] && lastPrices[symbol] !== 0) {
+                    el.classList.remove('down');
+                    el.classList.add('up');
+                } else if (price < lastPrices[symbol] && lastPrices[symbol] !== 0) {
+                    el.classList.remove('up');
+                    el.classList.add('down');
+                }
+
+                lastPrices[symbol] = price;
+            };
+
+            ws.onerror = () => {
+                const el = document.getElementById(`price-${symbol}`);
+                if(el) el.innerText = 'Error';
+            };
+        }
+
+        function renderActiveCoinsList() {
+            activeCoinsList.innerHTML = '';
+            symbols.forEach(s => {
+                const li = document.createElement('li');
+                li.innerHTML = `<span>${s}</span><button class="remove-coin" onclick="removeCoin('${s}')">✖</button>`;
+                activeCoinsList.appendChild(li);
+            });
+        }
+
+        window.removeCoin = function(s) {
+            symbols = symbols.filter(x => x !== s);
+            if(websockets[s]) { websockets[s].close(); delete websockets[s]; }
+            const card = document.getElementById(`card-${s}`);
+            if(card) card.remove();
+            renderActiveCoinsList();
+        };
+
+        function showError(msg) { errorMsg.innerText = msg; errorMsg.style.display = 'block'; }
+
+        function init() {
+            coinsContainer.innerHTML = '';
+            symbols.forEach(s => { createCoinElement(s); connectWebSocket(s); });
+        }
+
+        init();
+    </script>
+</body>
+</html>
