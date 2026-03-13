@@ -469,7 +469,13 @@
                     // REAL-TIME PRICE (updates on every single trade)
                     const price = parseFloat(d.p);
                     const prec = price < 1 ? 4 : 2;
-                    el.innerText = fmt(price, prec);
+                    const formattedPrice = fmt(price, prec);
+                    el.innerText = formattedPrice;
+
+                    // Update Tab Title with the first coin's price
+                    if (symbols[0] === symbol) {
+                        document.title = `${formattedPrice} | ${symbol}`;
+                    }
 
                     if (price > lastPrices[symbol] && lastPrices[symbol] !== 0) {
                         el.classList.remove('down');
