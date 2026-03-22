@@ -642,6 +642,7 @@
                 const data = await response.json();
                 
                 const prices = data.map(candle => parseFloat(candle[4]));
+                const rawDates = data.map(candle => candle[0]); // store raw unix timestamp
                 const labels = data.map(candle => {
                     const date = new Date(candle[0]);
                     if (timeframe === '1D' || timeframe === '1W') {
@@ -650,7 +651,7 @@
                     return date.getHours() + ':' + date.getMinutes().toString().padStart(2, '0');
                 });
 
-                chartData[symbol] = { prices, labels };
+                chartData[symbol] = { prices, labels, rawDates };
                 updateChartFull(symbol);
             } catch (error) {
                 console.error(`Error fetching history for ${symbol}:`, error);
@@ -706,6 +707,28 @@
             }
         };
 
+        const crosshairPlugin = {
+            id: 'crosshair',
+            afterDraw: chart => {
+                if (chart.tooltip?._active?.length) {
+                    const activePoint = chart.tooltip._active[0];
+                    const ctx = chart.ctx;
+                    const x = activePoint.element.x;
+                    const topY = chart.scales.y.top;
+                    const bottomY = chart.scales.y.bottom;
+
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.moveTo(x, topY);
+                    ctx.lineTo(x, bottomY);
+                    ctx.lineWidth = 1;
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)'; // Vertical crosshair line
+                    ctx.stroke();
+                    ctx.restore();
+                }
+            }
+        };
+
         function initChart(symbol) {
             const ctx = document.getElementById(`chart-${symbol}`).getContext('2d');
             
@@ -755,19 +778,34 @@
                         legend: { display: false },
                         tooltip: {
                             enabled: true,
-                            backgroundColor: 'rgba(20, 20, 20, 0.9)',
-                            titleColor: '#888',
-                            bodyColor: '#fff',
-                            borderColor: 'rgba(255, 255, 255, 0.1)',
-                            borderWidth: 1,
-                            padding: 10,
+                            backgroundColor: 'rgba(10, 10, 10, 0.4)', // Very subtle backing
+                            titleAlign: 'center',
+                            bodyAlign: 'center',
+                            titleColor: color, // The coin's primary color
+                            titleFont: { size: 16, weight: 'bold', family: 'system-ui, sans-serif' },
+                            bodyColor: '#aaa',
+                            bodyFont: { size: 13, family: 'system-ui, sans-serif' },
                             displayColors: false,
+                            borderWidth: 0,
+                            caretSize: 0, // Remove tooltip arrow
                             callbacks: {
                                 title: function(context) {
-                                    return symbol + ' - ' + context[0].label;
+                                    const val = context[0].parsed.y;
+                                    const prec = val < 10 ? 4 : 2;
+                                    let icon = symbol === 'BTC' ? '₿' : (symbol === 'ETH' ? 'Ξ' : '●');
+                                    return icon + ' $' + val.toLocaleString('en-US', {minimumFractionDigits: prec, maximumFractionDigits: prec});
                                 },
                                 label: function(context) {
-                                    return 'Price: $' + context.parsed.y.toLocaleString();
+                                    const index = context.dataIndex;
+                                    if(chartData[symbol] && chartData[symbol].rawDates) {
+                                        const rawTimestamp = chartData[symbol].rawDates[index];
+                                        if(rawTimestamp) {
+                                            const d = new Date(rawTimestamp);
+                                            const opts = { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit' };
+                                            return new Intl.DateTimeFormat('en-US', opts).format(d);
+                                        }
+                                    }
+                                    return context.label;
                                 }
                             }
                         }
@@ -802,7 +840,7 @@
                     },
                     animation: { duration: 0 } // No animation makes it feel more responsive/pro
                 },
-                plugins: [currentPricePlugin]
+                plugins: [currentPricePlugin, crosshairPlugin]
             });
 
         }
@@ -899,8 +937,12 @@
                                     chartData[s].prices.push(lastPrices[s]);
                                     chartData[s].prices.shift();
                                     
+                                    chartData[s].rawDates.push(now.getTime());
+                                    if (chartData[s].rawDates.length > chartData[s].prices.length) chartData[s].rawDates.shift();
+
                                     let timeStr = '';
                                     if (tf === '1D' || tf === '1W') {
+
                                         timeStr = now.getDate() + '/' + (now.getMonth()+1) + ' ' + now.getHours() + ':' + now.getMinutes().toString().padStart(2, '0');
                                     } else {
                                         timeStr = now.getHours() + ':' + now.getMinutes().toString().padStart(2, '0');
